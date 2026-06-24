@@ -1,0 +1,25 @@
+{
+  "name": "ast-grep-outline",
+  "version": "0.1.0",
+  "description": "Amp plugin that exposes ast-grep outline as an agent tool for fast structural code navigation.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ast-grep-outline-amp-install": "./src/amp/install.ts"
+  },
+  "exports": {
+    "./amp": "./src/amp/plugin.ts"
+  },
+  "scripts": {
+    "amp:build": "bun build src/amp/plugin.ts --target=node --format=esm --banner '// @amp-plugin updated automatically from https://raw.githubusercontent.com/dallenpyrah/ast-grep-outline/main/dist/amp/ast-grep-outline.ts' --outfile=dist/amp/ast-grep-outline.ts",
+    "amp:install": "bun src/amp/install.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "@types/node": "^24.0.0",
+    "oxlint": "^1.70.0",
+    "typescript": "^6.0.0"
+  }
+}
