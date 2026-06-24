@@ -8,6 +8,7 @@ var execFileAsync = promisify(execFile);
 var items = new Set(["auto", "structure", "exports", "imports", "all"]);
 var views = new Set(["auto", "names", "signatures", "digest", "expanded"]);
 var jsonStyles = new Set(["pretty", "stream", "compact"]);
+var noIgnoreValues = new Set(["hidden", "dot", "exclude", "global", "parent", "vcs"]);
 var exec = async (command, args, cwd) => await execFileAsync(command, [...args], {
   cwd,
   encoding: "utf8",
@@ -44,6 +45,21 @@ var enumValue = (value, allowed) => {
   if (typeof value !== "string")
     return;
   return allowed.has(value) ? value : undefined;
+};
+var enumArray = (value, allowed) => {
+  if (typeof value === "string") {
+    const selected2 = enumValue(value, allowed);
+    return selected2 === undefined ? [] : [selected2];
+  }
+  if (!Array.isArray(value))
+    return [];
+  const selected = [];
+  for (const item of value) {
+    const next = enumValue(item, allowed);
+    if (next !== undefined)
+      selected.push(next);
+  }
+  return [...new Set(selected)];
 };
 var outputLimit = (value) => {
   if (typeof value !== "number" || !Number.isFinite(value))
@@ -156,6 +172,13 @@ function astGrepOutlinePlugin(amp) {
           type: "boolean",
           description: "Do not load bundled outline extractor definitions. Rare; use only when custom outline rules intentionally replace defaults."
         },
+        noIgnore: {
+          description: "Override ast-grep ignore behavior. Values: hidden, dot, exclude, global, parent, vcs. Use sparingly, e.g. hidden to include dotfiles/directories.",
+          oneOf: [
+            { type: "string", enum: [...noIgnoreValues] },
+            { type: "array", items: { type: "string", enum: [...noIgnoreValues] }, maxItems: 6 }
+          ]
+        },
         follow: {
           type: "boolean",
           description: "Follow symlinks while traversing directories."
@@ -216,6 +239,8 @@ function astGrepOutlinePlugin(amp) {
         args.push("--no-default-outline-rules");
       if (booleanValue(input.follow))
         args.push("--follow");
+      for (const value of enumArray(input.noIgnore, noIgnoreValues))
+        args.push("--no-ignore", value);
       for (const glob of stringArray(input.globs))
         args.push("--globs", glob);
       const paths = stringArray(input.paths);

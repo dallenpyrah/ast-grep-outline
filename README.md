@@ -49,6 +49,12 @@ Reload plugins from Amp's command palette (`plugins: reload`) or restart Amp.
 { "paths": "src/parser.ts", "items": "imports" }
 ```
 
+Include hidden files or directories when needed:
+
+```json
+{ "paths": ".config", "noIgnore": "hidden" }
+```
+
 ## Safety
 
 The plugin runs `ast-grep` with `execFile`, not shell interpolation, and rejects paths outside the

@@ -40,6 +40,7 @@ interface PluginAPI {
 type Items = "auto" | "structure" | "exports" | "imports" | "all"
 type View = "auto" | "names" | "signatures" | "digest" | "expanded"
 type JsonStyle = "pretty" | "stream" | "compact"
+type NoIgnore = "hidden" | "dot" | "exclude" | "global" | "parent" | "vcs"
 
 interface OutlineInput {
   readonly paths?: unknown
@@ -53,6 +54,7 @@ interface OutlineInput {
   readonly config?: unknown
   readonly outlineRules?: unknown
   readonly noDefaultOutlineRules?: unknown
+  readonly noIgnore?: unknown
   readonly globs?: unknown
   readonly follow?: unknown
   readonly maxOutputChars?: unknown
@@ -63,6 +65,7 @@ const execFileAsync = promisify(execFile)
 const items = new Set<Items>(["auto", "structure", "exports", "imports", "all"])
 const views = new Set<View>(["auto", "names", "signatures", "digest", "expanded"])
 const jsonStyles = new Set<JsonStyle>(["pretty", "stream", "compact"])
+const noIgnoreValues = new Set<NoIgnore>(["hidden", "dot", "exclude", "global", "parent", "vcs"])
 
 const exec = async (command: string, args: ReadonlyArray<string>, cwd: string) =>
   await execFileAsync(command, [...args], {
@@ -108,6 +111,20 @@ const stringArray = (value: unknown): ReadonlyArray<string> => {
 const enumValue = <T extends string>(value: unknown, allowed: ReadonlySet<T>): T | undefined => {
   if (typeof value !== "string") return undefined
   return allowed.has(value as T) ? (value as T) : undefined
+}
+
+const enumArray = <T extends string>(value: unknown, allowed: ReadonlySet<T>): ReadonlyArray<T> => {
+  if (typeof value === "string") {
+    const selected = enumValue(value, allowed)
+    return selected === undefined ? [] : [selected]
+  }
+  if (!Array.isArray(value)) return []
+  const selected: Array<T> = []
+  for (const item of value) {
+    const next = enumValue(item, allowed)
+    if (next !== undefined) selected.push(next)
+  }
+  return [...new Set(selected)]
 }
 
 const outputLimit = (value: unknown): number => {
@@ -230,6 +247,14 @@ export default function astGrepOutlinePlugin(amp: PluginAPI) {
           description:
             "Do not load bundled outline extractor definitions. Rare; use only when custom outline rules intentionally replace defaults."
         },
+        noIgnore: {
+          description:
+            "Override ast-grep ignore behavior. Values: hidden, dot, exclude, global, parent, vcs. Use sparingly, e.g. hidden to include dotfiles/directories.",
+          oneOf: [
+            { type: "string", enum: [...noIgnoreValues] },
+            { type: "array", items: { type: "string", enum: [...noIgnoreValues] }, maxItems: 6 }
+          ]
+        },
         follow: {
           type: "boolean",
           description: "Follow symlinks while traversing directories."
@@ -288,6 +313,8 @@ export default function astGrepOutlinePlugin(amp: PluginAPI) {
 
       if (booleanValue(input.noDefaultOutlineRules)) args.push("--no-default-outline-rules")
       if (booleanValue(input.follow)) args.push("--follow")
+
+      for (const value of enumArray(input.noIgnore, noIgnoreValues)) args.push("--no-ignore", value)
 
       for (const glob of stringArray(input.globs)) args.push("--globs", glob)
 
